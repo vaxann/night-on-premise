@@ -1,0 +1,72 @@
+version: '3.3'
+
+services:
+  reproxy:
+    image: umputun/reproxy:master
+    container_name: reproxy
+    hostname: reproxy
+    restart: always
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+       - /var/run/docker.sock:/var/run/docker.sock:ro
+       - ${ACME_LOCATION}:/var/acme
+    environment:
+      - TZ=${TZ}
+      - DOCKER_ENABLED=true
+      - DOCKER_AUTO=false
+      - SSL_TYPE=auto
+      - SSL_ACME_LOCATION=/var/acme
+      - SSL_ACME_FQDN=${HOST}
+      - SSL_ACME_EMAIL=${ACME_EMAIL}
+      - HEADER=
+          X-Frame-Options:SAMEORIGIN,
+          X-XSS-Protection:1; mode=block;,
+          Content-Security-Policy:default-src 'self'; style-src 'self' 'unsafe-inline';
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    links:
+      - nightscout
+  
+  database:
+    image: mongo
+    container_name: database
+    hostname: database
+    restart: always
+    environment:
+      - 'MONGO_INITDB_ROOT_USERNAME=${ROOT_USERNAME}'
+      - 'MONGO_INITDB_ROOT_PASSWORD=${ROOT_PASSWORD}'
+      - 'MONGO_INITDB_DATABASE=${DATABASE}'
+    volumes:
+      - '${DATABASE_LOCATION}:/data/db'
+      - '${SCRIPT_LOCATION}/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro'
+
+  nightscout:
+    image: 'nightscout/cgm-remote-monitor-development:latest'
+    container_name: nightscout
+    hostname: nightscout
+    restart: always
+    environment:
+      - 'API_SECRET=${API_SECRET}'
+      - 'MONGO_CONNECTION=mongodb://${USERNAME}:${PASSWORD}@database/${DATABASE}'
+      - DISPLAY_UNITS=mmol
+      - PORT=1337
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "reproxy.enabled=true"
+      - "reproxy.port=1337"
+      - "reproxy.route=^(.*)"
+      - "reproxy.dest=@1"  
+    links:
+      - database
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    command: --schedule "0 5 * * *" --cleanup --label-enable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
