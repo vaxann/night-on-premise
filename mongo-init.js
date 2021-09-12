@@ -1,11 +1,11 @@
 db.createUser(
     {
-        user: "<Укажите пользователя БД как USERNAME в configuration.env>",
-        pwd: "<Укажите пароль к БД как PASSWORD в configuration.env>",
+        user: "<Specify the database user as USERNAME in configuration.env>",
+        pwd: "<Specify the database password as PASSWORD in configuration.env>",
         roles: [
             {
                 role: "readWrite",
-                db: "<Укажите имя БД как DATABASE в configuration.env>"
+                db: "<Specify database name as DATABASE in configuration.env>"
             }
         ]
     }
